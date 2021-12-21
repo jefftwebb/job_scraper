@@ -116,7 +116,14 @@ Column {data-width=650}
 ### Job Openings in the Salt Lake Area
 
 ```{r}
-datatable(new_data) %>% 
+datatable(new_data, options = list(columnDefs = list(list(
+  targets = c(6:7),
+  render = JS(
+    "function(data, type, row, meta) {",
+    "return type === 'display' && data.length > 60 ?",
+    "'<span title=\"' + data + '\">' + data.substr(0, 60) + '...</span>' : data;",
+    "}")
+))), callback = JS('table.page(3).draw(false);')) %>% 
   formatStyle(c("Search","Date", "Title", "Company", "Location", "Link","ID"), "vertical-align"="top") 
 ```
 
