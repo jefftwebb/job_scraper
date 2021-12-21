@@ -1,0 +1,122 @@
+---
+title: "Data Jobs In Salt Lake City"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(rvest)
+library(xml2)
+library(digest)
+library(dplyr)
+library(DT) 
+
+job_scraper <- function(position = "data analyst"){  # function expects two words
+  
+  # Set up dataframe
+  full_df <- data.frame() # Primary data frame to store info
+  
+  # Format search term
+  search <- paste0(str_split(position, " ")[[1]][1],
+                     "%20",
+                     str_split(position, " ")[[1]][2])
+  
+  #Format url
+  url <- paste0("https://www.indeed.com/jobs?q=",search,"&l=Salt%20Lake%20City%2C%20UT&radius=50&fromage=1")
+  
+  # Read HTML
+  page <- read_html(url) 
+  
+  # Get Job Title
+  title <- page %>%
+    html_nodes('.jobTitle') %>%
+    html_nodes('span') %>%
+    html_text('title') 
+  
+  title <- title[title != "new"]
+  
+  # Get Company Name
+  company <- page %>%
+    html_nodes('.companyName') %>%
+    html_text('companyName')
+  
+  # Get Location
+  location <- page %>%
+    html_nodes('.companyLocation') %>%
+    html_text('companyLocation')
+  
+  # Get Link
+  link <- page %>%
+    html_nodes('[data-hide-spinner = "true"]') %>%
+    html_attr('href')
+  
+  link <- sprintf("https://www.indeed.com%s", link) 
+  
+  # Get Job Descriptions
+  job_description <- c() # Goes into each link and pulls full text
+    
+    for(j in seq_along(link)) {
+      
+      url_link <- link[j]
+      page <- xml2::read_html(url_link)
+      
+      job_description[j] <- page %>%
+          html_nodes('.jobsearch-jobDescriptionText') %>%
+          html_text()
+    }
+  
+  # Get date
+  date <- Sys.Date()
+  
+  # Store in dataframe
+  df <- data.frame(search = position, date, title, company, location, job_description, link)
+  
+  full_df <- bind_rows(full_df, df)
+  
+  # Clean description text and display table
+  full_df$job_description <- gsub("[\r\n]", "*", full_df$job_description)
+
+  # Create a unique id for each job posting attribute combination
+  full_df$unique_id <- mapply(function(x, y, z) digest(paste0(x,y,z)), full_df$title, full_df$location, full_df$company)
+  
+  # Format table column names for display in dashboard
+  full_df <- full_df %>% 
+    select(Search = search,
+           Date = date,
+           Title = title,
+           Company = company,
+           Location = location,
+           Description = job_description,
+           Link = link,
+           ID = unique_id) %>% 
+    arrange(Date) %>% 
+    distinct(Link, .keep_all = TRUE)
+
+  list(results = full_df)
+
+}
+
+data <- read_csv("job_data.csv")
+
+new_data <- data %>% 
+  bind_rows(job_scraper("data analyst")$results) %>% 
+  bind_rows(job_scraper("data scientist")$results) %>% 
+  distinct(Link, .keep_all = TRUE) 
+  
+write_csv(new_data, "job_data.csv")
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Job Openings in the Salt Lake Area
+
+```{r}
+datatable(new_data) %>% 
+  formatStyle(c("Search","Date", "Title", "Company", "Location", "Link","ID"), "vertical-align"="top") 
+```
+
