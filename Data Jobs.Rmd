@@ -1,12 +1,14 @@
 ---
-title: "Data Jobs In Salt Lake City"
-output: 
+title: "Data Jobs in Salt Lake City"
+output:
   flexdashboard::flex_dashboard:
     orientation: columns
-    vertical_layout: fill
+    vertical_layout: scroll
+resource_files:
+- job_data.csv
 ---
 
-```{r setup, include=FALSE}
+```{r global, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
 library(rvest)
@@ -26,7 +28,7 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
                      str_split(position, " ")[[1]][2])
   
   #Format url
-  url <- paste0("https://www.indeed.com/jobs?q=",search,"&l=Salt%20Lake%20City%2C%20UT&radius=50&fromage=1")
+  url <- paste0("https://www.indeed.com/jobs?q=",search,"&l=Salt%20Lake%20City%2C%20UT&radius=50&fromage=2")
   
   # Read HTML
   page <- read_html(url) 
@@ -93,8 +95,11 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
            Description = job_description,
            Link = link,
            ID = unique_id) %>% 
-    arrange(Date) %>% 
     distinct(Link, ID, .keep_all = TRUE)
+  
+  # Remove remote locations
+  #full_df <- full_df[-grep("Remote", full_df$Location), ]
+  #full_df <- full_df[-grep("United States", full_df$Location), ]
 
   list(results = full_df)
 
@@ -105,25 +110,33 @@ data <- read_csv("job_data.csv")
 new_data <- data %>% 
   bind_rows(job_scraper("data analyst")$results) %>% 
   bind_rows(job_scraper("data scientist")$results) %>% 
-  distinct(Link, ID, .keep_all = TRUE) 
+  filter(!duplicated(ID)) %>% 
+  arrange(desc(Date), Company) 
   
 write_csv(new_data, "job_data.csv")
 ```
-
-Column {data-width=650}
------------------------------------------------------------------------
-
-### Job Openings in the Salt Lake Area
+### Open Positions by Date
 
 ```{r}
-datatable(new_data, options = list(columnDefs = list(list(
-  targets = c(6),
-  render = JS(
-    "function(data, type, row, meta) {",
-    "return type === 'display' && data.length > 160 ?",
-    "'<span title=\"' + data + '\">' + data.substr(0, 160) + '...</span>' : data;",
-    "}")
-))), callback = JS('table.page(3).draw(false);')) %>% 
-  formatStyle(c("Search","Date", "Title", "Company", "Location", "Link","ID"), "vertical-align"="top") 
+new_data$Title <- paste0("<a href='",new_data$Link,"'>",new_data$Title,"</a>")
+
+DT::datatable(select(new_data, -Link, -ID), 
+              fillContainer = F,
+              escape=F,
+              options = list(pageLength = 25,
+                             autoWidth = TRUE,
+                             columnDefs = list(
+                               list(
+                                 targets = c(6),
+                                 render = JS(
+                                       "function(data, type, row, meta) {",
+                                       "return type === 'display' && data.length > 360 ?",
+                                       "'<span title=\"' + data + '\">' + data.substr(0, 360) + '...</span>' : data;",
+                                       "}")))),
+              callback = JS('table.page(3).draw(false);'))  %>%
+  formatStyle(c("Search","Date", "Title", "Company", "Location"), "vertical-align"="top")
+
+
 ```
+
 
