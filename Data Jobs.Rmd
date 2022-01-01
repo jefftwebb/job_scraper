@@ -3,7 +3,7 @@ title: "Data Jobs in Salt Lake City"
 output:
   flexdashboard::flex_dashboard:
     orientation: columns
-    vertical_layout: scroll
+    vertical_layout: fill
 resource_files:
 - job_data.csv
 ---
@@ -117,13 +117,17 @@ new_data <- data %>%
   
 write_csv(new_data, "job_data.csv")
 ```
-### Open Positions by Date
 
-```{r}
+Column {.tabset .tabset-fade}
+-------------------------------------
+    
+### Open Positions 
+
+```{r, fig.height=1000}
 new_data$Title <- paste0("<a href='",new_data$Link,"'>",new_data$Title,"</a>")
 
 DT::datatable(select(new_data, -Link, -ID), 
-              fillContainer = F,
+              #fillContainer = F,
               escape=F,
               options = list(pageLength = 25,
                              autoWidth = TRUE,
@@ -140,5 +144,15 @@ DT::datatable(select(new_data, -Link, -ID),
 
 
 ```
+   
+### Text Analysis 
+
+  
+ 
+### Word Frequency 
+    
+
+
+
 
 
