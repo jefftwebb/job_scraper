@@ -75,7 +75,10 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
   date <- Sys.Date()
   
   # Store in dataframe
-  df <- data.frame(search = position, date, title, company, location, job_description, link)
+  
+  ifelse(is.null(job_description),
+               df <- data.frame(search = position, date, title = NA, company = NA, location = NA, job_description = NA, link = NA),
+               df <- data.frame(search = position, date, title, company, location, job_description, link))
   
   full_df <- bind_rows(full_df, df)
   
@@ -97,10 +100,6 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
            ID = unique_id) %>% 
     distinct(Link, ID, .keep_all = TRUE)
   
-  # Remove remote locations
-  #full_df <- full_df[-grep("Remote", full_df$Location), ]
-  #full_df <- full_df[-grep("United States", full_df$Location), ]
-
   list(results = full_df)
 
 }
