@@ -109,8 +109,7 @@ data <- read_csv("job_data.csv")
 new_data <- data %>% 
   bind_rows(job_scraper("data analyst")$results) %>% 
   bind_rows(job_scraper("data scientist")$results) %>% 
-  filter(!duplicated(ID),
-         !grepl("United States", Location),
+  filter(!grepl("United States", Location),
          !grepl("Remote", Location)) %>% 
   arrange(desc(Date), Company) 
   
