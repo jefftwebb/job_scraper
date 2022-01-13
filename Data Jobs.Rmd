@@ -149,13 +149,26 @@ DT::datatable(select(new_data, -Link, -ID),
 
 ```
    
-### Text Analysis 
+### Postings
 
 ```{r}
+library(ggplot2)
 
-```
+new_data %>% 
+  group_by(Date) %>% 
+  count() %>% 
+  ggplot(aes(Date, n))+
+  geom_col()+
+  theme_minimal()+
+  labs(title = "Count of Job Postings by Date",
+       y = "count")
   
- 
+  
+```
+
+### Text Analysis 
+
+  
 ### Word Frequency 
 
 
