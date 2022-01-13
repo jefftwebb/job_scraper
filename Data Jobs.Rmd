@@ -4,8 +4,6 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
-resource_files:
-- job_data.csv
 ---
 
 ```{r global, include=FALSE}
@@ -104,16 +102,24 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
 
 }
 
-data <- read_csv("job_data.csv")
+# Write empty job_data.csv once to persistent location
 
-new_data <- data %>% 
-  bind_rows(job_scraper("data analyst")$results) %>% 
-  bind_rows(job_scraper("data scientist")$results) %>% 
-  filter(!grepl("United States", Location),
-         !grepl("Remote", Location)) %>% 
-  arrange(desc(Date), Company) 
-  
-write_csv(new_data, "job_data.csv")
+# job_data <- data.frame(Search = "", Date =as.Date(""), Title ="", Company ="", Location ="", Description ="", Link = "", ID = "")
+
+# write_csv(job_data, "/opt/app-data/job_data.csv")
+
+data <- read_csv("/opt/app-data/job_data.csv")
+
+new_data <- data %>%
+  bind_rows(job_scraper("data analyst")$results) %>%
+  bind_rows(job_scraper("data scientist")$results) %>%
+  filter(!duplicated(ID),
+         !grepl("United States", Location),
+         !grepl("Remote", Location)) %>%
+  arrange(desc(Date), Company) %>% 
+  na.omit
+
+write_csv(new_data, "/opt/app-data/job_data.csv")
 ```
 
 Column {.tabset .tabset-fade}
@@ -148,6 +154,8 @@ DT::datatable(select(new_data, -Link, -ID),
   
  
 ### Word Frequency 
+
+
     
 
 
