@@ -168,6 +168,27 @@ new_data %>%
 
 ### Text Analysis 
 
+```{r}
+library(stringr)
+library(ggplot2)
+new_data %>% 
+  group_by(Date) %>% 
+  summarize(R = sum(str_detect(string = Description, pattern = " R ")),
+            Python = sum(str_detect(string = Description, pattern = " Python ") |
+                          str_detect(string = Description, pattern = " python ") )) %>% 
+  mutate(R = cumsum(R),
+            Python = cumsum(Python)) %>% 
+  pivot_longer(cols = c("R", "Python"), names_to = "Language", values_to = "count") %>% 
+  ggplot(aes(Date, count, col=Language))+
+  geom_line()+
+  theme_minimal()+
+  labs(title = "Cumulative Mentions of R vs. Python in Job Description",
+       y = "count")
+
+
+```
+
+
   
 ### Word Frequency 
 
