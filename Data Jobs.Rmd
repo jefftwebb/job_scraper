@@ -170,7 +170,9 @@ new_data %>%
 
 ```{r}
 library(stringr)
-library(ggplot2)
+
+new_data$Description <- gsub('[[:punct:]]', ' ', new_data$Description)
+
 new_data %>% 
   group_by(Date) %>% 
   summarize(R = sum(str_detect(string = Description, pattern = " R ")),
