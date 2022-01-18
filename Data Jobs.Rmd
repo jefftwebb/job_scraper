@@ -114,8 +114,7 @@ new_data <- data %>%
   bind_rows(job_scraper("data analyst")$results) %>%
   bind_rows(job_scraper("data scientist")$results) %>%
   filter(!duplicated(ID),
-         !grepl("United States", Location),
-         !grepl("Remote", Location)) %>%
+         !grepl("United States", Location)) %>%
   arrange(desc(Date), Company) %>% 
   na.omit
 
