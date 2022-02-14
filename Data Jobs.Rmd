@@ -12,19 +12,37 @@ library(tidyverse)
 library(rvest)
 library(xml2)
 library(digest)
-library(dplyr)
 library(DT) 
+library(stringr)
 
-job_scraper <- function(position = "data analyst"){  # function expects two words
+job_scraper <- function(position = "Security Systems Engineer"){  # function can take search phrase with up to 4 words, and at least 2
   
   # Set up dataframe
   full_df <- data.frame() # Primary data frame to store info
   
   # Format search term
-  search <- paste0(str_split(position, " ")[[1]][1],
+  word_count <- str_count(position, '\\w+')
+  
+  if(word_count == 2){
+    search <- paste0(str_split(position, " ")[[1]][1],
                      "%20",
                      str_split(position, " ")[[1]][2])
-  
+  } else if(word_count == 3){
+    search <- paste0(str_split(position, " ")[[1]][1],
+                     "%20",
+                     str_split(position, " ")[[1]][2],
+                     "%20",
+                     str_split(position, " ")[[1]][3])
+  } else {
+    search <- paste0(str_split(position, " ")[[1]][1],
+                     "%20",
+                     str_split(position, " ")[[1]][2],
+                     "%20",
+                     str_split(position, " ")[[1]][3],
+                     "%20",
+                     str_split(position, " ")[[1]][4])
+  }
+
   #Format url
   url <- paste0("https://www.indeed.com/jobs?q=",search,"&l=Salt%20Lake%20City%2C%20UT&radius=50&fromage=2")
   
@@ -75,7 +93,7 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
   # Store in dataframe
   
   ifelse(is.null(job_description),
-               df <- data.frame(search = position, date, title = NA, company = NA, location = NA, job_description = NA, link = NA),
+               df <- data.frame(search = position,  date, title = NA, company = NA, location = NA, job_description = NA, link = NA),
                df <- data.frame(search = position, date, title, company, location, job_description, link))
   
   full_df <- bind_rows(full_df, df)
@@ -102,6 +120,8 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
 
 }
 
+# job_scraper()$results
+
 # Write empty job_data.csv once to persistent location
 
 # job_data <- data.frame(Search = "", Date =as.Date(""), Title ="", Company ="", Location ="", Description ="", Link = "", ID = "")
@@ -110,15 +130,107 @@ job_scraper <- function(position = "data analyst"){  # function expects two word
 
 data <- read_csv("/opt/app-data/job_data.csv")
 
+```
+
+```{r, include = F}
+
+# Find program associated with search term
+  
+  mscm <- c("cybersecurity analyst", "cybersecurity manager", "cybersecurity consultant",
+          "chief information security officer", "director of security", "security systems engineer", 
+          "cecurity analyst", "security manager", "security auditor", "security architect",
+          "security consultant","information security analyst","network security engineer",
+          "information security manager","security compliance analyst","penetration tester",
+          "vulnerability assessment analyst")
+  msis <- c("data engineer", "cloud analyst", "cloud scientist", "cloud engineer", 
+          "information analyst", "development operations", "web servicing", "product management",
+          "process management", "systems architecture", "software architecture")
+  msba <- c("data analyst", "data scientist", "business analytics", "business intelligence")
+  
+  # Test
+  
+  job_scraper(mscm[1])$results
+  job_scraper(mscm[2])$results
+  job_scraper(mscm[3])$results
+  job_scraper(mscm[4])$results
+  job_scraper(mscm[5])$results
+  job_scraper(mscm[6])$results
+  job_scraper(mscm[7])$results
+  job_scraper(mscm[8])$results
+  job_scraper(mscm[9])$results
+  job_scraper(mscm[10])$results
+  job_scraper(mscm[11])$results
+  job_scraper(mscm[12])$results
+  job_scraper(mscm[13])$results
+  job_scraper(mscm[14])$results 
+  job_scraper(mscm[15])$results
+  job_scraper(mscm[16])$results
+  job_scraper(mscm[17])$results
+  job_scraper(msis[1])$results
+  job_scraper(msis[2])$results
+  job_scraper(msis[3])$results
+  job_scraper(msis[4])$results
+  job_scraper(msis[5])$results
+  job_scraper(msis[6])$results
+  job_scraper(msis[7])$results
+  job_scraper(msis[8])$results
+  job_scraper(msis[9])$results
+  job_scraper(msis[10])$results
+  job_scraper(msis[11])$results 
+  job_scraper(msba[1])$results 
+  job_scraper(msba[2])$results 
+  job_scraper(msba[3])$results 
+  job_scraper(msba[4])$results
+  
+```
+  
+```{r, include = F}
+
+# data <- read_csv("job_data.csv")
+
 new_data <- data %>%
-  bind_rows(job_scraper("data analyst")$results) %>%
-  bind_rows(job_scraper("data scientist")$results) %>%
+  bind_rows(job_scraper(mscm[1])$results) %>%
+  bind_rows(job_scraper(mscm[2])$results) %>%
+  bind_rows(job_scraper(mscm[3])$results) %>%
+  bind_rows(job_scraper(mscm[4])$results) %>%
+  bind_rows(job_scraper(mscm[5])$results) %>%
+  bind_rows(job_scraper(mscm[6])$results) %>%
+  bind_rows(job_scraper(mscm[7])$results) %>%
+  bind_rows(job_scraper(mscm[8])$results) %>%
+  bind_rows(job_scraper(mscm[9])$results) %>%
+  bind_rows(job_scraper(mscm[10])$results) %>%
+  bind_rows(job_scraper(mscm[11])$results) %>%
+  bind_rows(job_scraper(mscm[12])$results) %>%
+  bind_rows(job_scraper(mscm[13])$results) %>%
+  bind_rows(job_scraper(mscm[14])$results) %>%
+  bind_rows(job_scraper(mscm[15])$results) %>%
+  bind_rows(job_scraper(mscm[16])$results) %>%
+  bind_rows(job_scraper(mscm[17])$results) %>%
+  bind_rows(job_scraper(msis[1])$results) %>%
+  bind_rows(job_scraper(msis[2])$results) %>%
+  bind_rows(job_scraper(msis[3])$results) %>%
+  bind_rows(job_scraper(msis[4])$results) %>%
+  bind_rows(job_scraper(msis[5])$results) %>%
+  bind_rows(job_scraper(msis[6])$results) %>%
+  bind_rows(job_scraper(msis[7])$results) %>%
+  bind_rows(job_scraper(msis[8])$results) %>%
+  bind_rows(job_scraper(msis[9])$results) %>%
+  bind_rows(job_scraper(msis[10])$results) %>%
+  bind_rows(job_scraper(msis[11])$results) %>%
+  bind_rows(job_scraper(msba[1])$results) %>%
+  bind_rows(job_scraper(msba[2])$results) %>%
+  bind_rows(job_scraper(msba[3])$results) %>%
+  bind_rows(job_scraper(msba[4])$results) %>%
   filter(!duplicated(ID),
          !grepl("United States", Location)) %>%
+  mutate(Program = ifelse(Search %in% mscm, "MSCM",
+                    ifelse(Search %in% msis, "MSIS", "MSBA"))) %>% 
+  select(Search, Program, Date, Title, Company, Location, Description, Link, ID) %>% 
   arrange(desc(Date), Company) %>% 
   na.omit
 
 write_csv(new_data, "/opt/app-data/job_data.csv")
+
 ```
 
 Column {.tabset .tabset-fade}
@@ -191,7 +303,12 @@ new_data %>%
 
 
   
-### Word Frequency 
+### Job Description Topics
+
+```{r}
+
+```
+
 
 
     
