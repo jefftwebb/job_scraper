@@ -6,7 +6,9 @@ output:
     vertical_layout: fill
 ---
 
-```{r global, include=FALSE}
+```{r resources, include=FALSE}
+
+# Packages
 library(flexdashboard)
 library(tidyverse)
 library(rvest)
@@ -15,39 +17,39 @@ library(digest)
 library(DT) 
 library(stringr)
 
-job_scraper <- function(position = "Security Systems Engineer"){  # function can take search phrase with up to 4 words, and at least 2
+# Searches associated with programs
+
+mscm <- c("cybersecurity analyst", "cybersecurity manager", "cybersecurity consultant",
+          "chief information security officer", "director of security", "security systems engineer", 
+          "security analyst", "security manager", "security auditor", "security architect",
+          "security consultant","information security analyst","network security engineer",
+          "information security manager","security compliance analyst","penetration tester",
+          "vulnerability assessment analyst")
+
+msis <- c("data engineer", "data architect", "cloud engineer", 
+           "data warehouse analyst", "data warehouse engineer",
+          "data warehouse architect","business intelligence analyst",
+           "database administrator", "data integration engineer" )
+
+msba <- c("data analyst", "data scientist")
+```
+
+```{r scraper, include = F}
+job_scraper <- function(position = "director of security"){  # function can take search phrase with up to 4 words, and at least 2
   
-  # Set up dataframe
-  full_df <- data.frame() # Primary data frame to store info
+  library(rvest)
+  library(xml2)
+  library(digest)
+  library(tidyverse)
   
   # Format search term
-  word_count <- str_count(position, '\\w+')
+  search <- gsub(pattern = " ", replacement = "%20", x = position)
   
-  if(word_count == 2){
-    search <- paste0(str_split(position, " ")[[1]][1],
-                     "%20",
-                     str_split(position, " ")[[1]][2])
-  } else if(word_count == 3){
-    search <- paste0(str_split(position, " ")[[1]][1],
-                     "%20",
-                     str_split(position, " ")[[1]][2],
-                     "%20",
-                     str_split(position, " ")[[1]][3])
-  } else {
-    search <- paste0(str_split(position, " ")[[1]][1],
-                     "%20",
-                     str_split(position, " ")[[1]][2],
-                     "%20",
-                     str_split(position, " ")[[1]][3],
-                     "%20",
-                     str_split(position, " ")[[1]][4])
-  }
-
-  #Format url
+  # Format url
   url <- paste0("https://www.indeed.com/jobs?q=",search,"&l=Salt%20Lake%20City%2C%20UT&radius=50&fromage=2")
   
   # Read HTML
-  page <- read_html(url) 
+  page <- xml2::read_html(url) 
   
   # Get Job Title
   title <- page %>%
@@ -56,6 +58,22 @@ job_scraper <- function(position = "Security Systems Engineer"){  # function can
     html_text('title') 
   
   title <- title[title != "new"]
+  
+  if(length(title)==0){
+    
+    df <- data.frame(Search = position,
+                   Date = NA, 
+                   Title = NA, 
+                   Company = NA, 
+                   Location = NA, 
+                   Link = NA,
+                   Description = NA,
+                   ID = NA)
+    
+    return(df)
+
+ 
+     } else {
   
   # Get Company Name
   company <- page %>%
@@ -72,55 +90,51 @@ job_scraper <- function(position = "Security Systems Engineer"){  # function can
     html_nodes('[data-hide-spinner = "true"]') %>%
     html_attr('href')
   
-  link <- sprintf("https://www.indeed.com%s", link) 
+  link <- paste0("https://www.indeed.com", link) 
   
   # Get Job Descriptions
-  job_description <- c() # Goes into each link and pulls full text
+  job_description <- NA # vector for descriptions
     
-    for(j in seq_along(link)) {
-      
-      url_link <- link[j]
-      page <- xml2::read_html(url_link)
-      
-      job_description[j] <- page %>%
+  # function to get description from each link
+  get_description <- function(link){ 
+    page <- xml2::read_html(link)
+    description <- page %>%
           html_nodes('.jobsearch-jobDescriptionText') %>%
           html_text()
-    }
+     ifelse(length(description) > 0, description, NA) # sometimes the description appears to be missing. if so, replace w NA
+  }
+  
+  for(j in seq_along(link)) {
+   job_description[j] <- get_description(link[j])
+   Sys.sleep(1)
+ }
   
   # Get date
   date <- Sys.Date()
   
-  # Store in dataframe
+  # Store jobs in dataframe and do cleaning
   
-  ifelse(is.null(job_description),
-               df <- data.frame(search = position,  date, title = NA, company = NA, location = NA, job_description = NA, link = NA),
-               df <- data.frame(search = position, date, title, company, location, job_description, link))
+  df <- data.frame(Search = rep(position, length(job_description)),
+                   Date = date, 
+                   Title = title, 
+                   Company = company, 
+                   Location = location, 
+                   Link = link,
+                   Description = job_description) %>% 
+    mutate(Description = gsub("[\r\n]", "*", Description), # Clean descriptions
+           ID = digest(c(Title, Location, Company))) %>% #Create unique ID
+    distinct(Link, ID, .keep_all = T) 
   
-  full_df <- bind_rows(full_df, df)
+  return(df)
   
-  # Clean description text and display table
-  full_df$job_description <- gsub("[\r\n]", "*", full_df$job_description)
-
-  # Create a unique id for each job posting attribute combination
-  full_df$unique_id <- mapply(function(x, y, z) digest(paste0(x,y,z)), full_df$title, full_df$location, full_df$company)
+     }
   
-  # Format table column names for display in dashboard
-  full_df <- full_df %>% 
-    select(Search = search,
-           Date = date,
-           Title = title,
-           Company = company,
-           Location = location,
-           Description = job_description,
-           Link = link,
-           ID = unique_id) %>% 
-    distinct(Link, ID, .keep_all = TRUE)
-  
-  list(results = full_df)
-
+  # Close open connection
+   on.exit(close(url))
 }
+```
 
-# job_scraper()$results
+```{r read_data, include = F}
 
 # Write empty job_data.csv once to persistent location
 
@@ -132,135 +146,140 @@ data <- read_csv("/opt/app-data/job_data.csv")
 
 ```
 
-```{r, include = F}
+```{r test, include = F}
 
-# Find program associated with search term
-  
-  mscm <- c("cybersecurity analyst", "cybersecurity manager", "cybersecurity consultant",
-          "chief information security officer", "director of security", "security systems engineer", 
-          "cecurity analyst", "security manager", "security auditor", "security architect",
-          "security consultant","information security analyst","network security engineer",
-          "information security manager","security compliance analyst","penetration tester",
-          "vulnerability assessment analyst")
-  msis <- c("data engineer", "cloud analyst", "cloud scientist", "cloud engineer", 
-          "information analyst", "development operations", "web servicing", "product management",
-          "process management", "systems architecture", "software architecture")
-  msba <- c("data analyst", "data scientist", "business analytics", "business intelligence")
-  
-  # Test
-  
-  job_scraper(mscm[1])$results
-  job_scraper(mscm[2])$results
-  job_scraper(mscm[3])$results
-  job_scraper(mscm[4])$results
-  job_scraper(mscm[5])$results
-  job_scraper(mscm[6])$results
-  job_scraper(mscm[7])$results
-  job_scraper(mscm[8])$results
-  job_scraper(mscm[9])$results
-  job_scraper(mscm[10])$results
-  job_scraper(mscm[11])$results
-  job_scraper(mscm[12])$results
-  job_scraper(mscm[13])$results
-  job_scraper(mscm[14])$results 
-  job_scraper(mscm[15])$results
-  job_scraper(mscm[16])$results
-  job_scraper(mscm[17])$results
-  job_scraper(msis[1])$results
-  job_scraper(msis[2])$results
-  job_scraper(msis[3])$results
-  job_scraper(msis[4])$results
-  job_scraper(msis[5])$results
-  job_scraper(msis[6])$results
-  job_scraper(msis[7])$results
-  job_scraper(msis[8])$results
-  job_scraper(msis[9])$results
-  job_scraper(msis[10])$results
-  job_scraper(msis[11])$results 
-  job_scraper(msba[1])$results 
-  job_scraper(msba[2])$results 
-  job_scraper(msba[3])$results 
-  job_scraper(msba[4])$results
+  # basic Test
+  # job_scraper()
+  # 
+  # job_scraper(mscm[1])
+  # job_scraper(mscm[2])
+  # job_scraper(mscm[3])
+  # job_scraper(mscm[4])
+  # job_scraper(mscm[5])
+  # job_scraper(mscm[6])
+  # job_scraper(mscm[7])
+  # job_scraper(mscm[8])
+  # job_scraper(mscm[9])
+  # job_scraper(mscm[10])
+  # job_scraper(mscm[11])
+  # job_scraper(mscm[12])
+  # job_scraper(mscm[13])
+  # job_scraper(mscm[14])
+  # job_scraper(mscm[15])
+  # job_scraper(mscm[16])
+  # job_scraper(mscm[17])
+  # job_scraper(msis[1])
+  # job_scraper(msis[2])
+  # job_scraper(msis[3])
+  # job_scraper(msis[4]) #
+  # job_scraper(msis[5])
+  # job_scraper(msis[6])
+  # job_scraper(msis[7])
+  # job_scraper(msis[8])
+  # job_scraper(msis[9])
+  # job_scraper(msba[1])
+  # job_scraper(msba[2])
+
   
 ```
   
-```{r, include = F}
+```{r extract, include = F}
 
-# data <- read_csv("job_data.csv")
+# length(mscm)
+# length(msis)
+# length(msbas)
 
 new_data <- data %>%
-  bind_rows(job_scraper(mscm[1])$results) %>%
-  bind_rows(job_scraper(mscm[2])$results) %>%
-  bind_rows(job_scraper(mscm[3])$results) %>%
-  bind_rows(job_scraper(mscm[4])$results) %>%
-  bind_rows(job_scraper(mscm[5])$results) %>%
-  bind_rows(job_scraper(mscm[6])$results) %>%
-  bind_rows(job_scraper(mscm[7])$results) %>%
-  bind_rows(job_scraper(mscm[8])$results) %>%
-  bind_rows(job_scraper(mscm[9])$results) %>%
-  bind_rows(job_scraper(mscm[10])$results) %>%
-  bind_rows(job_scraper(mscm[11])$results) %>%
-  bind_rows(job_scraper(mscm[12])$results) %>%
-  bind_rows(job_scraper(mscm[13])$results) %>%
-  bind_rows(job_scraper(mscm[14])$results) %>%
-  bind_rows(job_scraper(mscm[15])$results) %>%
-  bind_rows(job_scraper(mscm[16])$results) %>%
-  bind_rows(job_scraper(mscm[17])$results) %>%
-  bind_rows(job_scraper(msis[1])$results) %>%
-  bind_rows(job_scraper(msis[2])$results) %>%
-  bind_rows(job_scraper(msis[3])$results) %>%
-  bind_rows(job_scraper(msis[4])$results) %>%
-  bind_rows(job_scraper(msis[5])$results) %>%
-  bind_rows(job_scraper(msis[6])$results) %>%
-  bind_rows(job_scraper(msis[7])$results) %>%
-  bind_rows(job_scraper(msis[8])$results) %>%
-  bind_rows(job_scraper(msis[9])$results) %>%
-  bind_rows(job_scraper(msis[10])$results) %>%
-  bind_rows(job_scraper(msis[11])$results) %>%
-  bind_rows(job_scraper(msba[1])$results) %>%
-  bind_rows(job_scraper(msba[2])$results) %>%
-  bind_rows(job_scraper(msba[3])$results) %>%
-  bind_rows(job_scraper(msba[4])$results) %>%
+  bind_rows(job_scraper(mscm[1])) %>%
+   bind_rows(job_scraper(mscm[2])) %>%
+  bind_rows(job_scraper(mscm[3])) %>%
+  bind_rows(job_scraper(mscm[4])) %>%
+  bind_rows(job_scraper(mscm[5])) %>%
+  bind_rows(job_scraper(mscm[6])) %>%
+  bind_rows(job_scraper(mscm[7])) %>%
+  bind_rows(job_scraper(mscm[8])) %>%
+  bind_rows(job_scraper(mscm[9])) %>%
+  bind_rows(job_scraper(mscm[10])) %>%
+  bind_rows(job_scraper(mscm[11])) %>%
+  bind_rows(job_scraper(mscm[12])) %>%
+  bind_rows(job_scraper(mscm[13])) %>%
+  bind_rows(job_scraper(mscm[14])) %>%
+  bind_rows(job_scraper(mscm[15])) %>%
+  bind_rows(job_scraper(mscm[16])) %>%
+  bind_rows(job_scraper(mscm[17])) %>%
+  bind_rows(job_scraper(msis[1])) %>%
+  bind_rows(job_scraper(msis[2])) %>%
+  bind_rows(job_scraper(msis[3])) %>%
+  bind_rows(job_scraper(msis[4])) %>%
+  bind_rows(job_scraper(msis[5])) %>%
+  bind_rows(job_scraper(msis[6])) %>%
+  bind_rows(job_scraper(msis[7])) %>%
+  bind_rows(job_scraper(msis[8]))%>%
+  bind_rows(job_scraper(msis[9]))%>%
+  bind_rows(job_scraper(msba[1])) %>%
+  bind_rows(job_scraper(msba[2])) %>%
   filter(!duplicated(ID),
-         !grepl("United States", Location)) %>%
-  mutate(Program = ifelse(Search %in% mscm, "MSCM",
-                    ifelse(Search %in% msis, "MSIS", "MSBA"))) %>% 
-  select(Search, Program, Date, Title, Company, Location, Description, Link, ID) %>% 
+         !grepl("United States", Location),
+         Company!="CyberCoders") %>%
+  select(Search, Date, Title, Company, Location, Description, Link, ID) %>% 
   arrange(desc(Date), Company) %>% 
   na.omit
 
-write_csv(new_data, "/opt/app-data/job_data.csv")
+ write_csv(new_data, "/opt/app-data/job_data.csv")
 
 ```
 
 Column {.tabset .tabset-fade}
 -------------------------------------
-    
+
 ### Open Positions 
 
 ```{r, fig.height=1000}
-new_data$Title <- paste0("<a href='",new_data$Link,"'>",new_data$Title,"</a>")
 
-DT::datatable(select(new_data, -Link, -ID), 
+
+table_data <- new_data %>% 
+  mutate(Program = ifelse(Search %in% mscm, "MSCM",
+                    ifelse(Search %in% msis, "MSIS", "MSBA"))) %>% 
+  select(Search, Program, Date, Title, Company, Location, Description, Link, ID) %>% 
+  arrange(desc(Date), Company)
+
+table_data$Title <- paste0("<a href='", table_data$Link,"'>", table_data$Title,"</a>")
+
+DT::datatable(select(table_data, -Link, -ID),
               #fillContainer = F,
               escape=F,
               options = list(pageLength = 25,
                              autoWidth = TRUE,
                              columnDefs = list(
                                list(
-                                 targets = c(6),
+                                 targets = c(7),
                                  render = JS(
                                        "function(data, type, row, meta) {",
                                        "return type === 'display' && data.length > 360 ?",
                                        "'<span title=\"' + data + '\">' + data.substr(0, 360) + '...</span>' : data;",
                                        "}")))),
               callback = JS('table.page(3).draw(false);'))  %>%
-  formatStyle(c("Search","Date", "Title", "Company", "Location"), "vertical-align"="top")
+  formatStyle(c("Search","Program","Date", "Title", "Company", "Location"), "vertical-align"="top")
 
 
 ```
    
+### Job Search Terms
+
+**Search terms by program**: 
+
+**MSBA**: data analyst, data scientist
+
+**MSCM**: cybersecurity analyst, cybersecurity manager, cybersecurity consultant, chief information security officer, director of security, security systems engineer, security analyst, security manager,security auditor, security architect, security consultant, information security analyst, network security engineer, information security manager, security compliance analyst, penetration tester, vulnerability assessment analyst
+
+**MSIS**: data engineer, data architect, cloud engineer, data warehouse analyst, data warehouse engineer, data warehouse architect, business intelligence analyst, database administrator, data integration engineer
+
+Use the search box in the table in the Open Position tab to find specific job titles or positions  associated with programs.
+
+
+
 ### Postings
+
 
 ```{r}
 library(ggplot2)
@@ -277,6 +296,9 @@ new_data %>%
   
 ```
 
+
+
+
 ### Text Analysis 
 
 ```{r}
@@ -284,19 +306,50 @@ library(stringr)
 
 new_data$Description <- gsub('[[:punct:]]', ' ', new_data$Description)
 
+# new_data %>% 
+#   group_by(Date, ID) %>% 
+#   summarize(R = sum(str_detect(string = Description, pattern = " R ")),
+#             Python = sum(str_detect(string = Description, pattern = " Python ") |
+#                           str_detect(string = Description, pattern = " python ") ),
+#             `R only` = ifelse((R > 0 & Python ==0), R, 0),
+#             `Python only` = ifelse((R == 0 & Python > 0), Python, 0)) %>% 
+#   group_by(Date) %>% 
+#   summarize(R = sum(R),
+#             Python = sum(Python),
+#          `R only` = sum(`R only`),
+#          `Python only` = sum(`Python only`)) %>% 
+#   mutate(R = cumsum(R),
+#             Python = cumsum(Python),
+#          `R only` = cumsum(`R only`),
+#          `Python only` = cumsum(`Python only`)) %>% 
+#   pivot_longer(cols = c("R", "Python", "R only", "Python only"), 
+#                names_to = "Language", 
+#                values_to = "count") %>% 
+#   ggplot(aes(Date, count, col=Language))+
+#   geom_line()+
+#   theme_minimal()+
+#   labs(title = "Cumulative Mentions of R vs. Python in Job Descriptions",
+#        y = "count")
+
 new_data %>% 
-  group_by(Date) %>% 
+  group_by(Date, ID) %>% 
   summarize(R = sum(str_detect(string = Description, pattern = " R ")),
             Python = sum(str_detect(string = Description, pattern = " Python ") |
-                          str_detect(string = Description, pattern = " python ") )) %>% 
+                          str_detect(string = Description, pattern = " python "))) %>% 
+  group_by(Date) %>% 
+  summarize(R = sum(R),
+            Python = sum(Python)) %>% 
   mutate(R = cumsum(R),
             Python = cumsum(Python)) %>% 
-  pivot_longer(cols = c("R", "Python"), names_to = "Language", values_to = "count") %>% 
+  pivot_longer(cols = c("R", "Python"), 
+               names_to = "Language", 
+               values_to = "count") %>% 
   ggplot(aes(Date, count, col=Language))+
   geom_line()+
   theme_minimal()+
   labs(title = "Cumulative Mentions of R vs. Python in Job Descriptions",
-       y = "count")
+       y = "count",
+       caption = "Note: additional search  terms  added on 2/17/22")
 
 
 ```
