@@ -32,10 +32,20 @@ msis <- c("data engineer", "data architect", "cloud engineer",
            "database administrator", "data integration engineer" )
 
 msba <- c("data analyst", "data scientist")
+
+# empty data frame to return on html parsing error using tryCatch()
+error_df <- data.frame(Search = NA,
+                   Date = NA, 
+                   Title = NA, 
+                   Company = NA, 
+                   Location = NA, 
+                   Link = NA,
+                   Description = NA,
+                   ID = NA)
 ```
 
 ```{r scraper, include = F}
-job_scraper <- function(position = "director of security"){  # function can take search phrase with up to 4 words, and at least 2
+job_scraper <- function(position = "data analyst"){  # function can take search phrase with up to 4 words, and at least 2
   
   library(rvest)
   library(xml2)
@@ -49,8 +59,8 @@ job_scraper <- function(position = "director of security"){  # function can take
   url <- paste0("https://www.indeed.com/jobs?q=",search,"&l=Salt%20Lake%20City%2C%20UT&radius=50&fromage=2")
   
   # Read HTML
-  page <- xml2::read_html(url) 
-  
+  page <- xml2::read_html(url)
+                   
   # Get Job Title
   title <- page %>%
     html_nodes('.jobTitle') %>%
@@ -112,7 +122,7 @@ job_scraper <- function(position = "director of security"){  # function can take
   # Get date
   date <- Sys.Date()
   
-  # Store jobs in dataframe and do cleaning
+  # Store jobs in data frame and do cleaning
   
   df <- data.frame(Search = rep(position, length(job_description)),
                    Date = date, 
@@ -122,12 +132,14 @@ job_scraper <- function(position = "director of security"){  # function can take
                    Link = link,
                    Description = job_description) %>% 
     mutate(Description = gsub("[\r\n]", "*", Description), # Clean descriptions
-           ID = digest(c(Title, Location, Company))) %>% #Create unique ID
+           ID = digest(c(Title, Location, Company, Date, Link))) %>% #Create unique ID
     distinct(Link, ID, .keep_all = T) 
   
   return(df)
   
      }
+  
+  Sys.sleep(rnorm(1, 8, 2)) # random sleep
   
   # Close open connection
    on.exit(close(url))
@@ -148,38 +160,39 @@ data <- read_csv("/opt/app-data/job_data.csv")
 
 ```{r test, include = F}
 
-  # basic Test
-  # job_scraper()
-  # 
-  # job_scraper(mscm[1])
-  # job_scraper(mscm[2])
-  # job_scraper(mscm[3])
-  # job_scraper(mscm[4])
-  # job_scraper(mscm[5])
-  # job_scraper(mscm[6])
-  # job_scraper(mscm[7])
-  # job_scraper(mscm[8])
-  # job_scraper(mscm[9])
-  # job_scraper(mscm[10])
-  # job_scraper(mscm[11])
-  # job_scraper(mscm[12])
-  # job_scraper(mscm[13])
-  # job_scraper(mscm[14])
-  # job_scraper(mscm[15])
-  # job_scraper(mscm[16])
-  # job_scraper(mscm[17])
-  # job_scraper(msis[1])
-  # job_scraper(msis[2])
-  # job_scraper(msis[3])
-  # job_scraper(msis[4]) #
-  # job_scraper(msis[5])
-  # job_scraper(msis[6])
-  # job_scraper(msis[7])
-  # job_scraper(msis[8])
-  # job_scraper(msis[9])
-  # job_scraper(msba[1])
-  # job_scraper(msba[2])
 
+  # basic Test
+  # tryCatch(job_scraper(),
+   #         error = function(x) return(x = error_df))
+  # 
+  # # Go through mscm
+  # for(i in seq_along(mscm)){
+  #   p <- tryCatch(job_scraper(mscm[i]),
+   #         error = function(x) return(x = error_df))
+  #   print(mscm[i])
+  #   print(i)
+  #   print(p)
+  # }
+  # 
+  # # Go through msis
+  # for(i in seq_along(msis)){
+  #   p <- tryCatch(job_scraper(msis[i]),
+   #         error = function(x) return(x = error_df))
+  #   print(msis[i])
+  #   print(i)
+  #   print(p)
+  # }
+  # 
+  # # Go through msba
+  # for(i in seq_along(msba)){
+  #   p <- tryCatch(job_scraper(msba[i]),
+   #         error = function(x) return(x = error_df))
+  #   print(msba[i])
+  #   print(i)
+  #   print(p)
+  # }
+  # 
+  
   
 ```
   
@@ -190,37 +203,37 @@ data <- read_csv("/opt/app-data/job_data.csv")
 # length(msbas)
 
 new_data <- data %>%
-  bind_rows(job_scraper(mscm[1])) %>%
-   bind_rows(job_scraper(mscm[2])) %>%
-  bind_rows(job_scraper(mscm[3])) %>%
-  bind_rows(job_scraper(mscm[4])) %>%
-  bind_rows(job_scraper(mscm[5])) %>%
-  bind_rows(job_scraper(mscm[6])) %>%
-  bind_rows(job_scraper(mscm[7])) %>%
-  bind_rows(job_scraper(mscm[8])) %>%
-  bind_rows(job_scraper(mscm[9])) %>%
-  bind_rows(job_scraper(mscm[10])) %>%
-  bind_rows(job_scraper(mscm[11])) %>%
-  bind_rows(job_scraper(mscm[12])) %>%
-  bind_rows(job_scraper(mscm[13])) %>%
-  bind_rows(job_scraper(mscm[14])) %>%
-  bind_rows(job_scraper(mscm[15])) %>%
-  bind_rows(job_scraper(mscm[16])) %>%
-  bind_rows(job_scraper(mscm[17])) %>%
-  bind_rows(job_scraper(msis[1])) %>%
-  bind_rows(job_scraper(msis[2])) %>%
-  bind_rows(job_scraper(msis[3])) %>%
-  bind_rows(job_scraper(msis[4])) %>%
-  bind_rows(job_scraper(msis[5])) %>%
-  bind_rows(job_scraper(msis[6])) %>%
-  bind_rows(job_scraper(msis[7])) %>%
-  bind_rows(job_scraper(msis[8]))%>%
-  bind_rows(job_scraper(msis[9]))%>%
-  bind_rows(job_scraper(msba[1])) %>%
-  bind_rows(job_scraper(msba[2])) %>%
-  filter(!duplicated(ID),
-         !grepl("United States", Location),
+  bind_rows(tryCatch(job_scraper(mscm[1]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[2]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[3]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[4]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[5]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[6]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[7]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[8]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[9]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[10]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[11]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[12]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[13]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[14]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[15]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[16]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(mscm[17]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[1]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[2]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[3]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[4]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[5]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[6]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[7]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[8]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msis[9]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msba[1]), error = function(x) return(x = error_df))) %>%
+  bind_rows(tryCatch(job_scraper(msba[2]), error = function(x) return(x = error_df))) %>%
+  filter(!grepl("United States", Location),
          Company!="CyberCoders") %>%
+  distinct(Search, Title, Company, Location, Description, .keep_all = T) %>% 
   select(Search, Date, Title, Company, Location, Description, Link, ID) %>% 
   arrange(desc(Date), Company) %>% 
   na.omit
@@ -234,32 +247,45 @@ Column {.tabset .tabset-fade}
 
 ### Open Positions 
 
-```{r, fig.height=1000}
+```{r}
 
 
 table_data <- new_data %>% 
   mutate(Program = ifelse(Search %in% mscm, "MSCM",
                     ifelse(Search %in% msis, "MSIS", "MSBA"))) %>% 
   select(Search, Program, Date, Title, Company, Location, Description, Link, ID) %>% 
-  arrange(desc(Date), Company)
+  arrange(desc(Date), Company) %>% 
+  filter(Date > max(Date) - 30)
 
 table_data$Title <- paste0("<a href='", table_data$Link,"'>", table_data$Title,"</a>")
 
 DT::datatable(select(table_data, -Link, -ID),
-              #fillContainer = F,
-              escape=F,
+              # fillContainer = T,
+              escape=F, # This is essential for link display
+              
               options = list(pageLength = 25,
                              autoWidth = TRUE,
+                             rownames = F,
                              columnDefs = list(
                                list(
-                                 targets = c(7),
+                                 targets = c(7), #ie, Description column
                                  render = JS(
                                        "function(data, type, row, meta) {",
                                        "return type === 'display' && data.length > 360 ?",
                                        "'<span title=\"' + data + '\">' + data.substr(0, 360) + '...</span>' : data;",
-                                       "}")))),
-              callback = JS('table.page(3).draw(false);'))  %>%
-  formatStyle(c("Search","Program","Date", "Title", "Company", "Location"), "vertical-align"="top")
+                                       "}"))),
+                             scrollY=F), # This allows for proper  veical sizing
+              callback = JS('table.page(3).draw(false);'),
+              caption = "Table includes jobs from the previous 30 days. Hover cursor over Description for full text.")  %>%
+  formatStyle(c("Search","Program","Date", "Title", "Company", "Location", "Description"), "vertical-align"="top")
+
+# DT::datatable(select(table_data, -ID, -Link, -Description),   
+#               options = list(pageLength = 25,
+#                              scrollY = F),
+#               escape = F,
+#               rownames = F,
+#               caption = "Table includes only jobs from the previous 30 days")
+
 
 
 ```
@@ -291,7 +317,8 @@ new_data %>%
   geom_line()+
   theme_minimal()+
   labs(title = "Count of Job Postings by Date",
-       y = "count")
+       y = "count",
+       caption = "Note: additional search  terms  added on 2/17/22")
   
   
 ```
@@ -348,8 +375,7 @@ new_data %>%
   geom_line()+
   theme_minimal()+
   labs(title = "Cumulative Mentions of R vs. Python in Job Descriptions",
-       y = "count",
-       caption = "Note: additional search  terms  added on 2/17/22")
+       y = "count")
 
 
 ```
