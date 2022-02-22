@@ -233,7 +233,7 @@ new_data <- data %>%
   bind_rows(tryCatch(job_scraper(msba[2]), error = function(x) return(x = error_df))) %>%
   filter(!grepl("United States", Location),
          Company!="CyberCoders") %>%
-  distinct(Title, Company, Location, Description, .keep_all = T) %>% 
+  distinct(Search, Title, Company, Location, Description, .keep_all = T) %>% 
   select(Search, Date, Title, Company, Location, Description, Link, ID) %>% 
   arrange(desc(Date), Company) %>% 
   na.omit
@@ -253,56 +253,74 @@ Column {.tabset .tabset-fade}
 table_data  <- new_data %>% 
   mutate(Program = ifelse(Search %in% mscm, "MSCM",
                     ifelse(Search %in% msis, "MSIS", "MSBA"))) %>% 
+  filter(Date > max(Date) - 60,
+         (str_detect(string = tolower(Description), pattern = Search) |
+           str_detect(string = tolower(Title), pattern = Search))) %>% # Ensure that search term is actually in the description or the job title
   select(Search, Program, Date, Title, Company, Location, Description, Link, ID) %>% 
-  arrange(desc(Date), Company) %>% 
-  filter(Date > max(Date) - 30)
+  arrange(desc(Date), Company) 
+  
 
 table_data$Title <- paste0("<a href='", table_data$Link,"'>", table_data$Title,"</a>")
 
 DT::datatable(select(table_data, -Link, -ID),
               # fillContainer = T,
               escape=F, # This is essential for link display
-              
               options = list(pageLength = 25,
                              autoWidth = TRUE,
                              rownames = F,
                              columnDefs = list(
                                list(
-                                 targets = c(7), #ie, Description column
+                                 targets = c(7), #ie, Description column for hover
                                  render = JS(
                                        "function(data, type, row, meta) {",
                                        "return type === 'display' && data.length > 360 ?",
                                        "'<span title=\"' + data + '\">' + data.substr(0, 360) + '...</span>' : data;",
                                        "}"))),
-                             scrollY=F), # This allows for proper  veical sizing
+                             scrollY=F), # This allows for proper  vertical sizing
               callback = JS('table.page(3).draw(false);'),
-              caption = "Table includes jobs from the previous 30 days. Hover cursor over Description for full text.")  %>%
+              caption = "Table includes jobs from the previous 60 days. Hover cursor over Description for full text. Use the search box to find specific job titles or positions  associated with programs.")  %>%
   formatStyle(c("Search","Program","Date", "Title", "Company", "Location", "Description"), "vertical-align"="top")
-
-# DT::datatable(select(table_data, -ID, -Link, -Description),   
-#               options = list(pageLength = 25,
-#                              scrollY = F),
-#               escape = F,
-#               rownames = F,
-#               caption = "Table includes only jobs from the previous 30 days")
-
-
 
 ```
    
-### Job Search Terms
+### Job Search Terms by Program
 
-**Search terms by program**: 
+**MSBA**: 
 
-**MSBA**: data analyst, data scientist
+- data analyst
+- data scientist
 
-**MSCM**: cybersecurity analyst, cybersecurity manager, cybersecurity consultant, chief information security officer, director of security, security systems engineer, security analyst, security manager,security auditor, security architect, security consultant, information security analyst, network security engineer, information security manager, security compliance analyst, penetration tester, vulnerability assessment analyst
+**MSCM**: 
 
-**MSIS**: data engineer, data architect, cloud engineer, data warehouse analyst, data warehouse engineer, data warehouse architect, business intelligence analyst, database administrator, data integration engineer
+- cybersecurity analyst
+- cybersecurity manager
+- cybersecurity consultant
+- chief information security officer
+- director of security
+- security systems engineer
+- security analyst
+- security manager
+- security auditor
+- security architect
+- security consultant
+- information security analyst
+- network security engineer
+- information security manager
+- security compliance analyst
+- penetration tester
+- vulnerability assessment analyst
 
-Use the search box in the table in the Open Position tab to find specific job titles or positions  associated with programs.
+**MSIS**: 
 
-
+- data engineer
+- data architect
+- cloud engineer
+- data warehouse analyst
+- data warehouse engineer
+- data warehouse architect
+- business intelligence analyst
+- database administrator
+- data integration engineer
 
 ### Postings
 
@@ -311,6 +329,8 @@ Use the search box in the table in the Open Position tab to find specific job ti
 library(ggplot2)
 
 new_data %>% 
+  filter(str_detect(string = tolower(Description), pattern = Search) |
+           str_detect(string = tolower(Title), pattern = Search)) %>% 
   group_by(Date) %>% 
   count() %>% 
   ggplot(aes(Date, n))+
@@ -318,7 +338,7 @@ new_data %>%
   theme_minimal()+
   labs(title = "Count of Job Postings by Date",
        y = "count",
-       caption = "Note: additional search  terms  added on 2/17/22")
+       caption = "Note: additional search  terms  for MSIS and MSCM programs added on 2/17/22")
   
   
 ```
