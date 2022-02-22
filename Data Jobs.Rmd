@@ -233,7 +233,7 @@ new_data <- data %>%
   bind_rows(tryCatch(job_scraper(msba[2]), error = function(x) return(x = error_df))) %>%
   filter(!grepl("United States", Location),
          Company!="CyberCoders") %>%
-  distinct(Search, Title, Company, Location, Description, .keep_all = T) %>% 
+  distinct(Title, Company, Location, Description, .keep_all = T) %>% 
   select(Search, Date, Title, Company, Location, Description, Link, ID) %>% 
   arrange(desc(Date), Company) %>% 
   na.omit
