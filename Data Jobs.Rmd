@@ -379,6 +379,8 @@ new_data$Description <- gsub('[[:punct:]]', ' ', new_data$Description)
 #        y = "count")
 
 new_data %>% 
+  filter(str_detect(string = tolower(Description), pattern = Search) |
+           str_detect(string = tolower(Title), pattern = Search)) %>% 
   group_by(Date, ID) %>% 
   summarize(R = sum(str_detect(string = Description, pattern = " R ")),
             Python = sum(str_detect(string = Description, pattern = " Python ") |
