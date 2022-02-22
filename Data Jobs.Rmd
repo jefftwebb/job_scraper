@@ -250,7 +250,7 @@ Column {.tabset .tabset-fade}
 ```{r}
 
 
-table_data <- new_data %>% 
+table_data  <- new_data %>% 
   mutate(Program = ifelse(Search %in% mscm, "MSCM",
                     ifelse(Search %in% msis, "MSIS", "MSBA"))) %>% 
   select(Search, Program, Date, Title, Company, Location, Description, Link, ID) %>% 
