@@ -4,6 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
+
 ---
 
 ```{r resources, include=FALSE}
@@ -16,6 +17,7 @@ library(xml2)
 library(digest)
 library(DT) 
 library(stringr)
+library(shiny)
 
 # Searches associated with programs
 
@@ -152,49 +154,12 @@ job_scraper <- function(position = "data analyst"){  # function can take search 
 
 # job_data <- data.frame(Search = "", Date =as.Date(""), Title ="", Company ="", Location ="", Description ="", Link = "", ID = "")
 
-# write_csv(job_data, "/opt/app-data/job_data.csv")
+# write_csv(job_data, "/opt/app-data/job_data_test.csv")
 
 data <- read_csv("/opt/app-data/job_data.csv")
 
 ```
 
-```{r test, include = F}
-
-
-  # basic Test
-  # tryCatch(job_scraper(),
-   #         error = function(x) return(x = error_df))
-  # 
-  # # Go through mscm
-  # for(i in seq_along(mscm)){
-  #   p <- tryCatch(job_scraper(mscm[i]),
-   #         error = function(x) return(x = error_df))
-  #   print(mscm[i])
-  #   print(i)
-  #   print(p)
-  # }
-  # 
-  # # Go through msis
-  # for(i in seq_along(msis)){
-  #   p <- tryCatch(job_scraper(msis[i]),
-   #         error = function(x) return(x = error_df))
-  #   print(msis[i])
-  #   print(i)
-  #   print(p)
-  # }
-  # 
-  # # Go through msba
-  # for(i in seq_along(msba)){
-  #   p <- tryCatch(job_scraper(msba[i]),
-   #         error = function(x) return(x = error_df))
-  #   print(msba[i])
-  #   print(i)
-  #   print(p)
-  # }
-  # 
-  
-  
-```
   
 ```{r extract, include = F}
 
@@ -242,6 +207,8 @@ new_data <- data %>%
 
 ```
 
+
+
 Column {.tabset .tabset-fade}
 -------------------------------------
 
@@ -262,12 +229,17 @@ table_data  <- new_data %>%
 
 table_data$Title <- paste0("<a href='", table_data$Link,"'>", table_data$Title,"</a>")
 
-DT::datatable(select(table_data, -Link, -ID),
+
+  
+  datatable(select(table_data, -Link, -ID),
               # fillContainer = T,
               escape=F, # This is essential for link display
-              options = list(pageLength = 25,
-                             autoWidth = TRUE,
+              extensions = 'Buttons',
+              options = list(autoWidth = TRUE,
                              rownames = F,
+                             dom = 'Bfrtip',
+                             buttons = c('csv', 'excel'),
+                             lengthMenu = list(c(10, 25, 50, -1), c(10, 25, 50, "All")),
                              columnDefs = list(
                                list(
                                  targets = c(7), #ie, Description column for hover
@@ -280,6 +252,9 @@ DT::datatable(select(table_data, -Link, -ID),
               callback = JS('table.page(3).draw(false);'),
               caption = "Table includes jobs from the previous 60 days. Hover cursor over Description for full text. Use the search box to find specific job titles or positions  associated with programs.")  %>%
   formatStyle(c("Search","Program","Date", "Title", "Company", "Location", "Description"), "vertical-align"="top")
+
+
+
 
 ```
    
