@@ -250,7 +250,7 @@ table_data$Title <- paste0("<a href='", table_data$Link,"'>", table_data$Title,"
                                        "}"))),
                              scrollY=F), # This allows for proper  vertical sizing
               callback = JS('table.page(3).draw(false);'),
-              caption = "Table includes jobs from the previous 60 days. Hover cursor over Description for full text. Use the search box to find specific job titles or positions  associated with programs.")  %>%
+              caption = "Table includes jobs from the previous 60 days. Hover cursor over Description for full text. Use the search box to find specific job titles or positions  associated with programs. Use the above buttons to download the entire table.")  %>%
   formatStyle(c("Search","Program","Date", "Title", "Company", "Location", "Description"), "vertical-align"="top")
 
 
